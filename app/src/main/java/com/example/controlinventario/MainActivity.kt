@@ -1,9 +1,10 @@
-package com.example.inventoryapp
+package com.example.controlinventario
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,14 +16,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext // Aunque no se usa directamente, es útil para el contexto
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.text.input.KeyboardType // Importar KeyboardType
+import androidx.compose.ui.text.input.KeyboardType // Importar KeyboardType para los teclados numéricos
+
+// --- Nuevas importaciones para el tema dinámico ---
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color // Para definir colores personalizados si los necesitaras
+// --- Fin de nuevas importaciones ---
 
 // Modelo de datos
 data class Product(
@@ -35,7 +41,7 @@ data class Product(
 )
 
 // ViewModel para manejar el estado
-class InventoryViewModel : ViewModel() {
+class InventoryViewModel : androidx.lifecycle.ViewModel() {
     private val _products = mutableStateOf<List<Product>>(emptyList())
     val products: State<List<Product>> = _products
 
@@ -68,14 +74,69 @@ class InventoryViewModel : ViewModel() {
     }
 }
 
+// --- Definición de los esquemas de color para el tema claro y oscuro ---
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFFBB86FC), // Ejemplo de un color primario para modo oscuro
+    secondary = Color(0xFF03DAC5),
+    tertiary = Color(0xFF3700B3),
+    background = Color(0xFF121212), // Fondo oscuro
+    surface = Color(0xFF121212),    // Superficie oscura
+    onPrimary = Color.Black,
+    onSecondary = Color.Black,
+    onTertiary = Color.White,
+    onBackground = Color.White,    // Texto claro en fondo oscuro
+    onSurface = Color.White        // Texto claro en superficie oscura
+    // Puedes personalizar más colores aquí si lo deseas
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF6200EE), // Ejemplo de un color primario para modo claro
+    secondary = Color(0xFF03DAC6),
+    tertiary = Color(0xFF3700B3),
+    background = Color.White,    // Fondo claro
+    surface = Color.White,       // Superficie clara
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onTertiary = Color.White,
+    onBackground = Color.Black,  // Texto oscuro en fondo claro
+    onSurface = Color.Black      // Texto oscuro en superficie clara
+    // Puedes personalizar más colores aquí si lo deseas
+)
+// --- Fin de la definición de los esquemas de color ---
+
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            InventoryApp()
+            // Envuelve tu InventoryApp con el tema personalizado
+            InventoryAppTheme {
+                InventoryApp()
+            }
         }
     }
 }
+
+// --- Composable para envolver tu aplicación con el tema ---
+@Composable
+fun InventoryAppTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(), // Detecta si el sistema está en modo oscuro
+    content: @Composable () -> Unit
+) {
+    val colors = if (darkTheme) {
+        DarkColorScheme
+    } else {
+        LightColorScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colors,
+        typography = MaterialTheme.typography, // Puedes definir una tipografía personalizada aquí
+        content = content
+    )
+}
+// --- Fin del Composable del tema ---
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,84 +146,83 @@ fun InventoryApp() {
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
 
-    MaterialTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Control de Inventarios") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+    // Ya no necesitas envolverlo en MaterialTheme aquí, ya lo hace InventoryAppTheme
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Control de Inventarios") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showAddDialog = true }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Agregar producto")
-                }
-            }
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp)
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true }
             ) {
-                // Estadísticas
-                StatsSection(viewModel.products.value)
+                Icon(Icons.Default.Add, contentDescription = "Agregar producto")
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            // Estadísticas
+            StatsSection(viewModel.products.value)
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Lista de productos
-                Text(
-                    text = "Productos en Inventario",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+            // Lista de productos
+            Text(
+                text = "Productos en Inventario",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-                LazyColumn {
-                    items(viewModel.products.value) { product ->
-                        ProductCard(
-                            product = product,
-                            onEdit = {
-                                selectedProduct = product
-                                showEditDialog = true
-                            },
-                            onDelete = { viewModel.deleteProduct(product.id) }
-                        )
-                    }
+            LazyColumn {
+                items(viewModel.products.value) { product ->
+                    ProductCard(
+                        product = product,
+                        onEdit = {
+                            selectedProduct = product
+                            showEditDialog = true
+                        },
+                        onDelete = { viewModel.deleteProduct(product.id) }
+                    )
                 }
             }
         }
+    }
 
-        // Diálogo para agregar producto
-        if (showAddDialog) {
-            AddProductDialog(
-                onDismiss = { showAddDialog = false },
-                onAddProduct = { product ->
-                    viewModel.addProduct(product)
-                    showAddDialog = false
-                }
-            )
-        }
+    // Diálogo para agregar producto
+    if (showAddDialog) {
+        AddProductDialog(
+            onDismiss = { showAddDialog = false },
+            onAddProduct = { product ->
+                viewModel.addProduct(product)
+                showAddDialog = false
+            }
+        )
+    }
 
-        // Diálogo para editar producto
-        if (showEditDialog && selectedProduct != null) {
-            EditProductDialog(
-                product = selectedProduct!!,
-                onDismiss = {
-                    showEditDialog = false
-                    selectedProduct = null // Limpiar el producto seleccionado
-                },
-                onUpdateProduct = { product ->
-                    viewModel.updateProduct(product)
-                    showEditDialog = false
-                    selectedProduct = null // Limpiar el producto seleccionado
-                }
-            )
-        }
+    // Diálogo para editar producto
+    if (showEditDialog && selectedProduct != null) {
+        EditProductDialog(
+            product = selectedProduct!!,
+            onDismiss = {
+                showEditDialog = false
+                selectedProduct = null // Limpiar el producto seleccionado
+            },
+            onUpdateProduct = { product ->
+                viewModel.updateProduct(product)
+                showEditDialog = false
+                selectedProduct = null // Limpiar el producto seleccionado
+            }
+        )
     }
 }
 
@@ -295,8 +355,8 @@ fun AddProductDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var quantityInput by remember { mutableStateOf("") }
-    var priceInput by remember { mutableStateOf("") }
+    var quantityInput by remember { mutableStateOf("") } // Cambiado a quantityInput
+    var priceInput by remember { mutableStateOf("") }     // Cambiado a priceInput
     var category by remember { mutableStateOf("") }
 
     // Estado para errores de validación
@@ -336,7 +396,7 @@ fun AddProductDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = quantityInput,
+                    value = quantityInput, // Usar quantityInput
                     onValueChange = {
                         quantityInput = it
                         showQuantityError = false // Reset error on change
@@ -349,7 +409,7 @@ fun AddProductDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = priceInput,
+                    value = priceInput, // Usar priceInput
                     onValueChange = {
                         priceInput = it
                         showPriceError = false // Reset error on change
@@ -358,7 +418,7 @@ fun AddProductDialog(
                     isError = showPriceError,
                     supportingText = { if (showPriceError) Text("Debe ser un número válido") },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal) // CAMBIO AQUÍ
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
         },
@@ -406,8 +466,8 @@ fun EditProductDialog(
 ) {
     var name by remember { mutableStateOf(product.name) }
     var description by remember { mutableStateOf(product.description) }
-    var quantityInput by remember { mutableStateOf(product.quantity.toString()) }
-    var priceInput by remember { mutableStateOf(product.price.toString()) }
+    var quantityInput by remember { mutableStateOf(product.quantity.toString()) } // Cambiado a quantityInput
+    var priceInput by remember { mutableStateOf(product.price.toString()) }     // Cambiado a priceInput
     var category by remember { mutableStateOf(product.category) }
 
     // Estado para errores de validación
@@ -447,7 +507,7 @@ fun EditProductDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = quantityInput,
+                    value = quantityInput, // Usar quantityInput
                     onValueChange = {
                         quantityInput = it
                         showQuantityError = false
@@ -460,7 +520,7 @@ fun EditProductDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = priceInput,
+                    value = priceInput, // Usar priceInput
                     onValueChange = {
                         priceInput = it
                         showPriceError = false
@@ -469,7 +529,7 @@ fun EditProductDialog(
                     isError = showPriceError,
                     supportingText = { if (showPriceError) Text("Debe ser un número válido") },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal) // CAMBIO AQUÍ
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
         },
@@ -510,5 +570,8 @@ fun EditProductDialog(
 @Preview(showBackground = true)
 @Composable
 fun InventoryAppPreview() {
-    InventoryApp()
+    // Asegúrate de que el Preview también use el tema
+    InventoryAppTheme {
+        InventoryApp()
+    }
 }
